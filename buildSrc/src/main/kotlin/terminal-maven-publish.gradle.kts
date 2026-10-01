@@ -16,13 +16,16 @@
 //
 // `./gradlew publishToMavenLocal` installs the module (all targets, with
 // sources and javadoc) into ~/.m2/repository under the `cn.enaium.terminal`
-// group. Publishing to Maven Central only needs the credentials and signing
-// keys in ~/.gradle/gradle.properties plus a `publishToMavenCentral()` call.
+// group. `./gradlew publishAndReleaseToMavenCentral` uploads the signed
+// publications to the Sonatype Central Portal and releases them; that wiring
+// lives in the root build (see below), together with the credentials and
+// signing keys it reads from ~/.gradle/gradle.properties.
 //
 // The configuration goes through Gradle's own publishing API rather than the
 // publish plugin's Kotlin API: the plugin is applied from the *root* build's
 // classpath (so it can see the Kotlin plugin classes), while this script runs
-// from buildSrc's.
+// from buildSrc's, where the plugin's DSL - including `publishToMavenCentral` -
+// is not on the classpath.
 
 import cn.enaium.terminal.build.TerminalPublishingExtension
 import org.gradle.api.publish.PublishingExtension

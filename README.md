@@ -278,23 +278,61 @@ terminalPublishing {
 ```
 
 ```bash
-./gradlew publishToMavenLocal     # install every module (all targets) into ~/.m2
+./gradlew publishToMavenLocal                 # install every module (all targets) into ~/.m2
+./gradlew publishAndReleaseToMavenCentral     # upload the signed publications and release them
 ```
 
-Consuming them:
+### Depending on it
+
+The artifacts live on Maven Central (and in `~/.m2` after `publishToMavenLocal`):
 
 ```kotlin
-dependencies {
-    implementation("cn.enaium.terminal:terminal-session:1.0.0")  // pulls core, parser, pty
-    implementation("cn.enaium.terminal:terminal-imgui:1.0.0")    // pulls imgui-kmp
-    implementation("cn.enaium.terminal:terminal-sdl:1.0.0")      // pulls sdl-kmp + sdl-ttf-kmp
+repositories {
+    mavenCentral()
 }
 ```
 
-Publishing to Maven Central only needs the credentials and signing keys
-(`mavenCentralUsername`/`mavenCentralPassword`, `signingInMemoryKey`/`signingInMemoryPassword`
-in `~/.gradle/gradle.properties`) plus a `publishToMavenCentral()` call in the
-`mavenPublishing` block of each module.
+In a Kotlin Multiplatform project the root module of each library resolves the
+variant for every target (jvm, android, ios/tvos/watchos, macos, linux, mingw).
+Depend on it from `commonMain` - or from a single source set, e.g. `jvmMain`:
+
+```kotlin
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation("cn.enaium.terminal:terminal-session:1.0.0")  // pty + parser + core
+            implementation("cn.enaium.terminal:terminal-imgui:1.0.0")    // + imgui-kmp widget
+            implementation("cn.enaium.terminal:terminal-sdl:1.0.0")      // + sdl-kmp + sdl-ttf-kmp
+        }
+    }
+}
+```
+
+A JVM-only project depends on the same coordinates; Gradle picks the jvm variant
+from the module metadata:
+
+```kotlin
+dependencies {
+    implementation("cn.enaium.terminal:terminal-imgui:1.0.0")
+}
+```
+
+| dependency | brings in | use it for |
+| --- | --- | --- |
+| `terminal-unicode` | – | cell widths and grapheme clustering on their own |
+| `terminal-core` | `terminal-unicode` | the screen state machine, without a pty or a renderer |
+| `terminal-parser` | `terminal-core` | feeding bytes into a `Terminal` yourself |
+| `terminal-pty` | pty4j on the JVM | a pty/ConPTY process |
+| `terminal-session` | core, parser, pty | pty → parser → terminal, plus input helpers |
+| `terminal-imgui` | session, imgui-kmp | a Dear ImGui terminal widget |
+| `terminal-sdl` | session, sdl-kmp, sdl-ttf-kmp | an SDL3 terminal window |
+
+Every module that applies the publish plugin is wired to the Sonatype Central
+Portal: `publishAndReleaseToMavenCentral` uploads the signed publications of all
+of them as one deployment and releases it. It reads the Portal token
+(`mavenCentralUsername`/`mavenCentralPassword`) and the signing key
+(`signing.keyId`/`signing.password`/`signing.secretKeyRingFile`, or the
+`signingInMemoryKey*` properties) from `~/.gradle/gradle.properties`.
 
 ## Testing
 
