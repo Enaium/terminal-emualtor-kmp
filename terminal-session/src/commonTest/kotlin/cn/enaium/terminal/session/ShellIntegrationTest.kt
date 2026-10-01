@@ -56,6 +56,78 @@ class ShellIntegrationTest {
     }
 
     @Test
+    fun resizingWhileAtAPromptKeepsTheShellInSync() {
+        if (!ptyFactory().isSupported) return
+        withSession { session ->
+            assertTrue(pumpUntil(session) { atPrompt(session) }, "prompt")
+            // A screenful of output, so the re-wrap has real content to move.
+            session.sendText("seq 1 60\n")
+            // The echoed command line also contains "60", so wait for the
+            // output's own last line.
+            assertTrue(
+                pumpUntil(session) { screen(session).lines().any { it.trim() == "60" } },
+                "the output arrived:\n${screen(session)}",
+            )
+            assertTrue(pumpUntil(session) { atPrompt(session) }, "back at a prompt")
+
+            // A window drag: the widget resizes on every cell it gains or loses.
+            for (width in intArrayOf(80, 120, 60, 100, 40, 100)) {
+                session.resize(width, 30)
+                session.pump()
+            }
+
+            // The numbers are still one contiguous, in-order run: no row was
+            // duplicated or dropped by the re-wrap.
+            val numbers = screen(session).lines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && it.all(Char::isDigit) }
+                .map { it.toInt() }
+            assertTrue(numbers.isNotEmpty(), "the output is still on screen:\n${screen(session)}")
+            assertTrue(
+                numbers == numbers.sorted().distinct(),
+                "the output is in order and not duplicated:\n${screen(session)}",
+            )
+
+            // The cursor sits on the prompt line, so the shell's next output
+            // starts where the shell thinks it does.
+            val terminal = session.terminal
+            val cursorLine = terminal.lineAt(terminal.cursorRow).text(0, terminal.columns)
+            assertTrue(cursorLine.contains("$"), "the cursor is on the prompt line, not '${cursorLine.trim()}'")
+            assertEquals(1, countOccurrences(session, "$ "), "one prompt line, not a wall of redrawn ones:\n${screen(session)}")
+
+            session.sendText("echo RESIZE-OK\n")
+            assertTrue(
+                pumpUntil(session) { countOccurrences(session, "RESIZE-OK") >= 2 },
+                "the shell still runs commands after the resizes:\n${screen(session)}",
+            )
+        }
+    }
+
+    @Test
+    fun narrowingTheWindowKeepsTheStartOfALongLine() {
+        if (!ptyFactory().isSupported) return
+        withSession { session ->
+            assertTrue(pumpUntil(session) { atPrompt(session) }, "prompt")
+            // A long line that soft-wraps, with blank rows below it. Re-wrapping
+            // it into more rows must not push its own beginning off screen. The
+            // marker is spelled with an escape so only the output prints it.
+            session.sendText("printf 'B\\105GIN'; printf 'x%.0s' \$(seq 1 300); echo\n")
+            assertTrue(
+                pumpUntil(session) { screen(session).contains("BEGIN") },
+                "the output arrived:\n${screen(session)}",
+            )
+            assertTrue(pumpUntil(session) { atPrompt(session) }, "back at a prompt")
+
+            session.resize(40, 30)
+            session.pump()
+            assertTrue(
+                screen(session).contains("BEGIN"),
+                "the start of the long line is still on screen:\n${screen(session)}",
+            )
+        }
+    }
+
+    @Test
     fun colorsAndAttributesReachTheScreen() {
         if (!ptyFactory().isSupported) return
         withSession { session ->
@@ -149,6 +221,12 @@ class ShellIntegrationTest {
         } finally {
             session.close()
         }
+    }
+
+    /** True while the shell waits at its prompt: the cursor sits on it. */
+    private fun atPrompt(session: TerminalSession): Boolean {
+        val terminal = session.terminal
+        return terminal.lineAt(terminal.cursorRow).text(0, terminal.columns).contains("$")
     }
 
     private fun screen(session: TerminalSession): String {

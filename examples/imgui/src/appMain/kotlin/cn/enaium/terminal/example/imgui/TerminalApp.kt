@@ -34,6 +34,13 @@ data class TerminalFontPaths(
     val bold: String? = null,
     val italic: String? = null,
     val fallback: String? = null,
+    /**
+     * Symbol faces merged into the regular face after [fallback]. One face
+     * rarely covers everything a shell prints (a CJK face has no braille, a
+     * symbol face no ideographs), and ImGui draws every code point none of the
+     * merged faces provides with its `?` glyph.
+     */
+    val extras: List<String> = emptyList(),
 )
 
 /**
@@ -89,6 +96,7 @@ fun runTerminalExample(
                         boldPath = fontPaths.bold,
                         italicPath = fontPaths.italic,
                         fallbackPath = fontPaths.fallback,
+                        extraFallbackPaths = fontPaths.extras,
                         sizePx = 14f,
                         density = density,
                         // The default ranges cover box drawing, block elements,

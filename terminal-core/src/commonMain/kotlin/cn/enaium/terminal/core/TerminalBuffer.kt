@@ -242,6 +242,9 @@ class TerminalBuffer internal constructor(
                 val segment = segments[(length - 1) / oldColumns]
                 if (segment.isCellBlank((length - 1) % oldColumns)) length-- else break
             }
+            // False for a logical line that holds no character at all (a blank
+            // row, or a row of nothing but spaces).
+            val hasContent = length > 0
             if (length == 0) length = 1
 
             // Where the cursor sits inside this logical line, if anywhere.
@@ -272,26 +275,43 @@ class TerminalBuffer internal constructor(
                 output.add(target)
             }
 
-            // The cursor may sit one past the last character of the logical
-            // line; keep it at the end instead of dropping it.
-            if (cursorRow < 0 && cursorAbsolute == length && length > 0) {
+            // The cursor may sit at (or past) the end of the logical line: the
+            // cells that were never written are trimmed above, so a cursor
+            // moved past the text ends up past the trimmed end. Keep it at the
+            // end of the content instead of dropping it - a dropped cursor
+            // sends the caller to the bottom row.
+            if (cursorRow < 0 && cursorAbsolute >= 0 && cursorAbsolute >= length && length > 0) {
                 cursorRow = output.size - 1
-                cursorColumnOut = (length - (length - 1) / newColumns * newColumns)
-                    .coerceAtMost(newColumns - 1)
+                cursorColumnOut = if (hasContent) {
+                    // One past the last character, wrapped onto the last row.
+                    (length - (length - 1) / newColumns * newColumns).coerceAtMost(newColumns - 1)
+                } else {
+                    // Nothing to align to: keep the column the cursor was on.
+                    cursorColumn.coerceIn(0, newColumns - 1)
+                }
             }
         }
 
         // 4. The tail stays on screen, the rest goes back into the scrollback.
+        //
+        // Trailing blank rows are padding, not content: they are dropped first
+        // (never the cursor's row), otherwise a line that re-wrapped into more
+        // rows than before would push its own beginning into the scrollback -
+        // the screen then shows the middle of the line with the cursor on the
+        // wrong row.
+        var contentEnd = output.size
+        while (contentEnd > 1 && contentEnd - 1 > cursorRow && output[contentEnd - 1].isBlank) contentEnd--
+        val content: List<TerminalLine> = if (contentEnd == output.size) output else output.subList(0, contentEnd)
+
         val keep = max(1, newRows)
-        val scrollbackLines: List<TerminalLine>
-        val screenLines: List<TerminalLine>
-        if (output.size <= keep) {
-            scrollbackLines = emptyList()
-            screenLines = output
-        } else {
-            scrollbackLines = output.subList(0, output.size - keep)
-            screenLines = output.subList(output.size - keep, output.size)
-        }
+        // The window normally shows the tail of the content. When the cursor
+        // would be cut off - the screen got shorter and the cursor sits above
+        // the tail - the window is anchored on the cursor's row instead, so the
+        // cursor always stays on its own line.
+        val tail = max(0, content.size - keep)
+        val start = if (cursorRow in 0 until tail) cursorRow else tail
+        val scrollbackLines: List<TerminalLine> = content.subList(0, start)
+        val screenLines: List<TerminalLine> = content.subList(start, min(content.size, start + keep))
 
         val retained = HashSet<Long>()
         scrollbackLines.forEach { retained.add(it.id) }

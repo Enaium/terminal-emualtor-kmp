@@ -16,6 +16,11 @@ private fun jvmFontPaths(): TerminalFontPaths {
             regular = "/System/Library/Fonts/SFNSMono.ttf",
             italic = "/System/Library/Fonts/SFNSMonoItalic.ttf",
             fallback = "/System/Library/Fonts/Hiragino Sans GB.ttc",
+            extras = listOf(
+                "/System/Library/Fonts/Apple Symbols.ttf",
+                "/System/Library/Fonts/Apple Braille.ttf",
+                "/System/Library/Fonts/CJKSymbolsFallback.ttc",
+            ),
         )
 
         os.contains("win") -> TerminalFontPaths(
@@ -23,6 +28,10 @@ private fun jvmFontPaths(): TerminalFontPaths {
             bold = "C:\\Windows\\Fonts\\consolab.ttf",
             italic = "C:\\Windows\\Fonts\\consolai.ttf",
             fallback = "C:\\Windows\\Fonts\\msyh.ttc",
+            extras = listOf(
+                "C:\\Windows\\Fonts\\seguisym.ttf",
+                "C:\\Windows\\Fonts\\seguiemj.ttf",
+            ),
         )
 
         else -> TerminalFontPaths(
@@ -30,6 +39,10 @@ private fun jvmFontPaths(): TerminalFontPaths {
             bold = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
             italic = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Oblique.ttf",
             fallback = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            extras = listOf(
+                "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf",
+                "/usr/share/fonts/truetype/noto/NotoSansSymbols-Regular.ttf",
+            ),
         )
     }
     // ImGui silently produces an empty face for a path that does not exist
@@ -39,6 +52,7 @@ private fun jvmFontPaths(): TerminalFontPaths {
         bold = candidates.bold?.takeIf { File(it).isFile },
         italic = candidates.italic?.takeIf { File(it).isFile },
         fallback = candidates.fallback?.takeIf { File(it).isFile },
+        extras = candidates.extras.filter { File(it).isFile },
     )
 }
 

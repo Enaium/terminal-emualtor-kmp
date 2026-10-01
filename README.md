@@ -1,5 +1,7 @@
 # terminal-emulator-kmp
 
+![](https://img.cdn1.vip/i/6abe8100869fc_1790869760.webp)
+
 A terminal emulator, written as a Kotlin Multiplatform library.
 
 The core (screen, VT/ANSI parser, Unicode) is pure Kotlin and runs on every
@@ -187,8 +189,11 @@ unchanged; quitting takes at most a few hundred milliseconds.
 
 **Reflow.** On resize the normal screen joins soft-wrapped rows into logical lines,
 re-wraps them at the new width and maps the cursor back through the rewrap, so
-`less`/`vim`/shell prompts survive a window resize. The alternate screen keeps its
-top-left corner instead (full-screen applications redraw themselves).
+`less`/`vim`/shell prompts survive a window resize. Blank rows below the content are
+padding: they never push the re-wrapped text into the scrollback, and the window
+follows the cursor when the screen gets shorter than the tail it would show. The
+alternate screen keeps its top-left corner instead (full-screen applications redraw
+themselves).
 
 **Selection anchors.** A `TerminalPosition` holds the absolute `TerminalLine.id`,
 which is never reused, so a selection keeps pointing at the same text while output

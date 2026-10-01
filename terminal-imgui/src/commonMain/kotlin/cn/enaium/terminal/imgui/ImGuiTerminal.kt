@@ -16,6 +16,29 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /**
+ * Modifier state.
+ *
+ * Read from the physical keys, not from `ImGuiMod_*`: imgui 1.92 documents
+ * those as key-chord flags, and `IsKeyDown(ImGuiMod_Ctrl)` stays false while
+ * Ctrl is held (which used to drop every Ctrl combination — Ctrl+C never
+ * reached the pty).
+ *
+ * Ctrl and Super are both accepted because imgui swaps them when
+ * `ConfigMacOSXBehaviors` is on (the default on macOS): the key a terminal
+ * calls Ctrl arrives as Super there, and Cmd as Ctrl. Shift and Alt are not
+ * swapped.
+ */
+private val ctrlDown: Boolean
+    get() = ImGui.isKeyDown(ImGuiKey.LEFT_CTRL) || ImGui.isKeyDown(ImGuiKey.RIGHT_CTRL) ||
+        ImGui.isKeyDown(ImGuiKey.LEFT_SUPER) || ImGui.isKeyDown(ImGuiKey.RIGHT_SUPER)
+
+private val shiftDown: Boolean
+    get() = ImGui.isKeyDown(ImGuiKey.LEFT_SHIFT) || ImGui.isKeyDown(ImGuiKey.RIGHT_SHIFT)
+
+private val altDown: Boolean
+    get() = ImGui.isKeyDown(ImGuiKey.LEFT_ALT) || ImGui.isKeyDown(ImGuiKey.RIGHT_ALT)
+
+/**
  * The Dear ImGui terminal widget: draws a [TerminalSession]'s screen and
  * forwards keyboard, mouse and clipboard input to the application.
  *
@@ -155,9 +178,9 @@ class ImGuiTerminal(
         val mouse = ImGui.getMousePos()
         val column = ((mouse.x - origin.x) / metrics.cellWidth).toInt().coerceIn(0, max(0, terminal.columns - 1))
         val row = ((mouse.y - origin.y) / metrics.cellHeight).toInt().coerceIn(0, max(0, terminal.rows - 1))
-        val shift = ImGui.isKeyDown(ImGuiKey.MOD_SHIFT)
-        val alt = ImGui.isKeyDown(ImGuiKey.MOD_ALT)
-        val ctrl = ImGui.isKeyDown(ImGuiKey.MOD_CTRL)
+        val shift = shiftDown
+        val alt = altDown
+        val ctrl = ctrlDown
         if (terminal.modes.mouseTracking && !shift) {
             repeat(abs(lines)) {
                 session.sendWheel(up = delta > 0, column = column, row = row, ctrl = ctrl, alt = alt, shift = shift)
@@ -201,9 +224,9 @@ class ImGuiTerminal(
     // =====================================================================
 
     private fun handleKeys() {
-        val ctrl = ImGui.isKeyDown(ImGuiKey.MOD_CTRL)
-        val alt = ImGui.isKeyDown(ImGuiKey.MOD_ALT)
-        val shift = ImGui.isKeyDown(ImGuiKey.MOD_SHIFT)
+        val ctrl = ctrlDown
+        val alt = altDown
+        val shift = shiftDown
         if (handleClipboardShortcuts(ctrl, shift)) return
 
         for (index in NAVIGATION_KEYS.indices) {
@@ -271,9 +294,9 @@ class ImGuiTerminal(
         val mouse = ImGui.getMousePos()
         val column = ((mouse.x - origin.x) / metrics.cellWidth).toInt().coerceIn(0, max(0, terminal.columns - 1))
         val row = ((mouse.y - origin.y) / metrics.cellHeight).toInt().coerceIn(0, max(0, terminal.rows - 1))
-        val ctrl = ImGui.isKeyDown(ImGuiKey.MOD_CTRL)
-        val alt = ImGui.isKeyDown(ImGuiKey.MOD_ALT)
-        val shift = ImGui.isKeyDown(ImGuiKey.MOD_SHIFT)
+        val ctrl = ctrlDown
+        val alt = altDown
+        val shift = shiftDown
         // Shift bypasses mouse reporting, which is how a user selects text in
         // applications that grab the mouse (vim, tmux, htop).
         val tracking = terminal.modes.mouseTracking && !shift

@@ -40,6 +40,13 @@ data class TerminalFontSettings(
     val boldItalicPath: String? = null,
     /** TTF/OTF merged into every face for the glyphs they lack (CJK, emoji, symbols). */
     val fallbackPath: String? = null,
+    /**
+     * Faces merged into the regular face after [fallbackPath] — the platform's
+     * extra symbol faces. One face rarely covers everything a shell prints (a
+     * CJK face has no braille, a symbol face no ideographs) and ImGui draws
+     * every code point none of the merged faces provides with its `?` glyph.
+     */
+    val extraFallbackPaths: List<String> = emptyList(),
     /** Font size in logical pixels (before [density]). */
     val sizePx: Float = 14f,
     /** Row height as a multiple of the font size. */
@@ -176,11 +183,14 @@ private fun ImFontAtlas.addFace(path: String?, settings: TerminalFontSettings): 
         glyphRanges = settings.glyphRanges,
     )
     val font = if (path == null) addFontDefault(config) else addFontFromFileTTF(path, config)
-    settings.fallbackPath?.let { fallback ->
-        // Merging is what makes the fallback work: a face added without
-        // mergeMode would only be used when explicitly pushed.
+    // Merging is what makes a fallback work: a face added without mergeMode
+    // would only be used when explicitly pushed. mergeMode merges into the font
+    // added *before* it, so the extras have to follow the first fallback here —
+    // added after another face they would land in that face instead of in
+    // [TerminalFonts.regular], which is the one the renderer draws with.
+    for (path in listOfNotNull(settings.fallbackPath) + settings.extraFallbackPaths) {
         addFontFromFileTTF(
-            fallback,
+            path,
             ImFontConfig(
                 sizePixels = settings.sizePx * settings.density,
                 pixelSnapH = true,
