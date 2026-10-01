@@ -1,0 +1,5 @@
+package = cn.enaium.terminal.pty.conpty
+headers = conpty.h
+headerFilter = conpty.h
+compilerOpts = -D_WIN32_WINNT=0x0A00 -DNTDDI_VERSION=0x0A000006 -DUNICODE -D_UNICODE
+linkerOpts = -lkernel32

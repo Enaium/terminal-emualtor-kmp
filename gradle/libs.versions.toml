@@ -1,0 +1,25 @@
+[versions]
+kotlin = "2.4.20"
+agp = "9.3.1"
+coroutines = "1.10.2"
+imgui-kmp = "1.0.16"
+sdl-kmp = "1.0.13"
+sdl-ttf-kmp = "1.0.0"
+pty4j = "0.13.13"
+junit = "5.11.0"
+
+[libraries]
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+imgui-kmp = { module = "cn.enaium.imgui:imgui-kmp", version.ref = "imgui-kmp" }
+sdl-kmp = { module = "cn.enaium.sdl:sdl-kmp", version.ref = "sdl-kmp" }
+sdl-ttf-kmp = { module = "cn.enaium.sdl:sdl-ttf-kmp", version.ref = "sdl-ttf-kmp" }
+pty4j = { module = "org.jetbrains.pty4j:pty4j", version.ref = "pty4j" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "1.11.0" }
+
+[plugins]
+maven-publish = { id = "com.vanniktech.maven.publish", version = "0.37.0" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
